@@ -4,10 +4,6 @@ import Stats from 'stats.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare.js';
 
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 
 async function loadShader(url) {
@@ -61,63 +57,8 @@ async function init() {
     const camera = new THREE.PerspectiveCamera(125, window.innerWidth / window.innerHeight, 0.1, 100);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // const renderScene = new RenderPass(scene, camera);
-
-    const ENTIRE_SCENE = 0, BLOOM_SCENE = 1;
-
-    const bloomLayer = new THREE.Layers();
-    bloomLayer.set(BLOOM_SCENE);
-    // camera.layers.enableAll();
-
-    const renderScene = new RenderPass(scene, camera);
-
-    const bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        1.5,
-        0.4,
-        0.85
-    );
-    bloomPass.threshold = 0;
-    bloomPass.strength = 2;   // Reduced from 1.5
-    bloomPass.radius = 0.36;     // Reduced from 0.4 
-
-    const bloomComposer = new EffectComposer(renderer);
-    bloomComposer.renderToScreen = false;
-    bloomComposer.addPass(renderScene);
-    bloomComposer.addPass(bloomPass);
 
 
-    const finalPass = new ShaderPass(
-        new THREE.ShaderMaterial({
-            uniforms: {
-                baseTexture: { value: null },
-                bloomTexture: { value: bloomComposer.renderTarget2.texture }
-            },
-            vertexShader: `
-                varying vec2 vUv;
-                void main() {
-                    vUv = uv;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D baseTexture;
-                uniform sampler2D bloomTexture;
-                varying vec2 vUv;
-                void main() {
-                    vec4 base = texture2D(baseTexture, vUv);
-                    vec4 bloom = texture2D(bloomTexture, vUv);
-                    gl_FragColor = base + bloom * 0.5;  // Reduced bloom intensity
-                }
-            `,
-            defines: {}
-        }), "baseTexture"
-    );
-    finalPass.needsSwap = true;
-
-    const finalComposer = new EffectComposer(renderer);
-    finalComposer.addPass(renderScene);
-    finalComposer.addPass(finalPass);
 
 
     camera.position.set(0.5, 0, 3);
@@ -127,19 +68,9 @@ async function init() {
     controls.enableDamping = true;
 
     // renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    // bloomComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    // renderer.setSize(window.innerWidth, window.innerHeight);
-    // bloomComposer.setSize(window.innerWidth, window.innerHeight);
-
     const pixelRatio = Math.min(window.devicePixelRatio, 2);
     renderer.setPixelRatio(pixelRatio);
-    bloomComposer.setPixelRatio(pixelRatio);
-    finalComposer.setPixelRatio(pixelRatio);
-
     renderer.setSize(window.innerWidth, window.innerHeight);
-    bloomComposer.setSize(window.innerWidth, window.innerHeight);
-    finalComposer.setSize(window.innerWidth, window.innerHeight);
-
     renderer.debug.checkShaderErrors = true;
 
     controls.dampingFactor = 0.05;
@@ -186,8 +117,6 @@ async function init() {
 
     lensflare.addElement(lensflareElement);
     pointLight.add(lensflare);
-    pointLight.layers.set(ENTIRE_SCENE);
-    lensflare.layers.set(ENTIRE_SCENE);
 
     const earth = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
@@ -261,16 +190,6 @@ async function init() {
     points.visible = true;
     scene.add(points);
 
-    earth.layers.enable(BLOOM_SCENE);
-    // cloud.layers.enable(3);
-    points.layers.enable(BLOOM_SCENE);
-
-
-    const bloomFolder = gui.addFolder('Bloom Effect');
-    bloomFolder.add(bloomPass, 'strength', 0, 2, 0.01).name('Bloom Strength');
-    bloomFolder.add(bloomPass, 'radius', 0, 1, 0.01).name('Bloom Radius');
-    bloomFolder.add(bloomPass, 'threshold', 0, 1, 0.01).name('Bloom Threshold');
-
     gui.add(gridHelper, "visible").name("Grid Helper");
     gui.add(points, "visible").name("Points shi");
     gui.add(axis, "visible").name("Axis Helper");
@@ -342,8 +261,6 @@ async function init() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-        bloomComposer.setSize(window.innerWidth, window.innerHeight);
-        finalComposer.setSize(window.innerWidth, window.innerHeight);
     });
 
     const toggleFullScreen = () => {
@@ -370,59 +287,10 @@ async function init() {
         earth.rotation.y = elapsedTime / 10;
         cloud.rotation.y = elapsedTime / 10;
         controls.update();
-        // renderer.render(scene, camera);
-        // composer.render();
-        // bloomComposer.render();
-        // finalComposer.render();
-
-        // renderer.clear();
-        // renderBloomLayer(); // Bloom pass for selective objects
-
-        // finalComposer.render();
-
-        renderBloom();
-        finalComposer.render();
-
+        renderer.render(scene, camera);
         stats.end();
         requestAnimationFrame(animate);
     };
-
-    function renderBloom() {
-        // Temporarily disable pointlight and lensflare
-        const pointLightVisibility = pointLight.visible;
-        const lensflareVisibility = lensflare.visible;
-        const cc = cloud.visible;
-        pointLight.visible = false;
-        lensflare.visible = false;
-        cloud.visible = false;
-    
-        // Render bloom scene
-        scene.traverse(darkenNonBloomed);
-        bloomComposer.render();
-        scene.traverse(restoreMaterial);
-    
-        // Restore pointlight and lensflare visibility
-        pointLight.visible = pointLightVisibility;
-        lensflare.visible = lensflareVisibility;
-        cloud.visible = cc;
-    }
-
-    const darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
-    const materials = {};
-
-    function darkenNonBloomed(obj) {
-        if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
-            materials[obj.uuid] = obj.material;
-            obj.material = darkMaterial;
-        }
-    }
-
-    function restoreMaterial(obj) {
-        if (materials[obj.uuid]) {
-            obj.material = materials[obj.uuid];
-            delete materials[obj.uuid];
-        }
-    }
 
     animate();
 }
