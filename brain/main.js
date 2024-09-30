@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import GUI from 'lil-gui';
 import Stats from 'stats.js';
@@ -8,12 +7,9 @@ import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflar
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-// import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-// import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
-
-
-const textureLoader = new THREE.TextureLoader();
 
 async function loadShader(url) {
     const response = await fetch(url);
@@ -21,83 +17,112 @@ async function loadShader(url) {
 }
 
 function createGradientTexture() {
-    const size = 512; // Size of the texture
+    const size = 512;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
 
     const context = canvas.getContext('2d');
 
-    // Create a radial gradient
     const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    gradient.addColorStop(0, 'rgba(0, 0, 10, 1)'); // Dark color for space
-    gradient.addColorStop(1, 'rgba(7, 7, 40, 1)'); // Slightly lighter color
+    
+    // Updated color stops using Three.js ColorManagement
+    const darkColor = new THREE.Color(0, 0, 10 / 255);
+    const lightColor = new THREE.Color(7 / 255, 7 / 255, 40 / 255);
+    
+    darkColor.convertSRGBToLinear();
+    lightColor.convertSRGBToLinear();
+
+    gradient.addColorStop(0, darkColor.getStyle()); // Dark color for space
+    gradient.addColorStop(1, lightColor.getStyle()); // Slightly lighter color
 
     context.fillStyle = gradient;
     context.fillRect(0, 0, size, size);
 
-    return new THREE.Texture(canvas);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    
+    return texture;
 }
 
 
 async function init() {
+    const textureLoader = new THREE.TextureLoader();
     const earthMap = "/res/earth_map.jpeg";
     const cloudMap = "/res/cloud.png";
+    const cloudTexture = textureLoader.load(cloudMap);
+    cloudTexture.colorSpace = THREE.SRGBColorSpace;
     const atmosVertex = await loadShader('/res/shaders/atmosVertex.glsl');
     const atmosFrag = await loadShader('/res/shaders/atmosFrag.glsl');
     const Frag = await loadShader('/res/shaders/frag.glsl');
     const vertex = await loadShader('/res/shaders/vertex.glsl');
-    const gradientTexture = createGradientTexture();
 
     const gui = new GUI();
     const stats = new Stats();
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(125, window.innerWidth / window.innerHeight, 0.1, 100);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const renderScene = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
         1.5, // Bloom strength
-        .3, // Bloom radius
-        .4 // Bloom threshold
+        .1, // Bloom radius
+        .1 // Bloom threshold
     );
 
-    const composer = new EffectComposer(renderer);
-    composer.addPass(renderScene);
-    composer.addPass(bloomPass);
+    bloomPass.strength = 1.5;
+    bloomPass.radius = .01;
+    bloomPass.threshold = 0.1;
 
-    gradientTexture.needsUpdate = true;
+
+
+    const bloomComposer = new EffectComposer(renderer);
+    bloomComposer.renderToScreen = false;
+    bloomComposer.addPass(renderScene);
+    bloomComposer.addPass(bloomPass);
+
+    const finalComposer = new EffectComposer(renderer);
+    finalComposer.addPass(renderScene);
+
+    const outputPass = new OutputPass();
+    // finalComposer.addPass(outputPass);
+
     camera.position.set(0.5, 0, 3);
     const controls = new OrbitControls(camera, renderer.domElement);
-
-    // scene.background = gradientTexture;
+    
     renderer.shadowMap.enabled = true;
     controls.enableDamping = true;
-
+    
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    bloomComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    bloomPass.setSize(window.innerWidth, window.innerHeight);
+    outputPass.setSize(window.innerWidth, window.innerHeight);
+    bloomComposer.setSize(window.innerWidth, window.innerHeight);
     renderer.debug.checkShaderErrors = true;
-
+    
     controls.dampingFactor = 0.05;
     controls.maxDistance = 12;
     controls.minDistance = 2;
     controls.enablePan = false;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.75;
-
+    
     document.body.style.margin = 0;
     document.body.style.overflow = "hidden";
     document.body.appendChild(renderer.domElement);
     document.body.appendChild(stats.dom);
 
+    const gradientTexture = createGradientTexture();
+    gradientTexture.needsUpdate = true;
+    scene.background = gradientTexture;
+    
     const gridHelper = new THREE.GridHelper(20, 30);
     gridHelper.visible = false;
     scene.add(gridHelper);
-
+    
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     scene.add(ambientLight);
 
@@ -129,8 +154,8 @@ async function init() {
             vertexShader: vertex,
             fragmentShader: Frag,
             uniforms: {
-                globeTexture: { value: new THREE.TextureLoader().load(earthMap) },
-                bumpMap: { value: new THREE.TextureLoader().load(earthMap) },
+                globeTexture: { value: textureLoader.load(earthMap) },
+                bumpMap: { value: textureLoader.load(earthMap) },
                 bumpScale: { value: 0.02 },
                 metalness: { value: 0.1 },
                 roughness: { value: 0.7 },
@@ -160,7 +185,7 @@ async function init() {
     const cloud = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.MeshStandardMaterial({
-            map: { value: new THREE.TextureLoader().load(cloudMap) },
+            map: cloudTexture,
             bumpScale: 0.015,
             transparent: true,
             depthWrite: false,
@@ -173,16 +198,22 @@ async function init() {
     const pointsCount = 1500;
     const pointsGeo = new THREE.BufferGeometry();
     const pointsPos = new Float32Array(pointsCount * 3);
+    const pointsSizes = new Float32Array(pointsCount);
 
-    for (let i = 0; i < pointsCount * 3; i++) {
-        pointsPos[i] = (Math.random() - 0.5) * 15;
+    for (let i = 0; i < pointsCount; i++) {
+        pointsPos[i * 3] = (Math.random() - 0.5) * 15;
+        pointsPos[i * 3 + 1] = (Math.random() - 0.5) * 15;
+        pointsPos[i * 3 + 2] = (Math.random() - 0.5) * 15;
+        pointsSizes[i] = Math.random() * 0.02 + 0.005; // Random size between 0.005 and 0.025
     }
     pointsGeo.setAttribute("position", new THREE.BufferAttribute(pointsPos, 3));
+    pointsGeo.setAttribute("size", new THREE.BufferAttribute(pointsSizes, 1));
 
-    const pointsMat = new THREE.PointsMaterial({
-        size: 0.015,
-        sizeAttenuation: true,
-        color: 0xffffff
+    const pointsMat = new THREE.PointsMaterial(
+        {
+            size: 0.015,
+            sizeAttenuation: true,
+            color: 0xffffff
     });
 
     const points = new THREE.Points(pointsGeo, pointsMat);
@@ -256,28 +287,19 @@ async function init() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        bloomComposer.setSize(width, height);
+        finalComposer.setSize(width, height);
     });
 
-    const toogleFullScreen = () => {
-        const fullscreenElement =
-            document.fullscreenElement || document.webkitFullscreenElement;
-
-        if (!fullscreenElement) {
-            if (document.body.requestFullscreen) {
-                document.body.requestFullscreen();
-            } else if (document.body.webkitRequestFullscreen) {
-                document.body.webkitRequestFullscreen();
-            }
+    const toggleFullScreen = () => {
+        if (!document.fullscreenElement) {
+            document.body.requestFullscreen();
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            }
+            document.exitFullscreen();
         }
     };
 
-    gui.add({ fullscreen: toogleFullScreen }, "fullscreen").name("Toggle Fullscreen");
+    gui.add({ fullscreen: toggleFullScreen }, "fullscreen").name("Toggle Fullscreen");
     const clock = new THREE.Clock();
 
     const animate = () => {
@@ -293,16 +315,15 @@ async function init() {
         earth.rotation.y = elapsedTime / 10;
         cloud.rotation.y = elapsedTime / 10;
         controls.update();
-        renderer.render(scene, camera);
-
+        // renderer.render(scene, camera);
         // composer.render();
+        bloomComposer.render();
+        finalComposer.render();
         stats.end();
         requestAnimationFrame(animate);
     };
 
     animate();
-
 }
-
 
 init();
