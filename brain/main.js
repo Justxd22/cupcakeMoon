@@ -9,6 +9,7 @@ import { Font } from 'three/examples/jsm/loaders/FontLoader.js';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
+import { gsap } from "gsap";
 
 async function loadShader(url) {
     const response = await fetch(url);
@@ -45,6 +46,7 @@ function createGradientTexture() {
 
 
 async function init() {
+    const clock = new THREE.Clock();
     const textureLoader = new THREE.TextureLoader();
     const earthMap = "./res/earth_map.jpeg";
     const cloudMap = "./res/cloud.png";
@@ -89,7 +91,7 @@ async function init() {
     controls.minDistance = 2;
     controls.enablePan = false;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.75;
+    controls.autoRotateSpeed = 1;
 
     document.body.style.margin = 0;
     document.body.style.overflow = "hidden";
@@ -130,7 +132,12 @@ async function init() {
     pointLight.add(lensflare);
 
 
-    const textGeometry = new TextGeometry('Earth', {
+    const textList = ["Hey", "Cosmic", "Star", "Pretttty"];
+    let currentIndex = 0;
+    let currentText = "";
+    let isFadingOut = false;
+
+    let textGeometry = new TextGeometry('Cosmic', {
         font: font,
         size: 1,
         depth: 0.1,
@@ -145,78 +152,146 @@ async function init() {
     textGeometry.center();
 
     const textMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x7accff,
-        roughness: 0.5, 
-        transmission:1,
+        color: 0x00e1ff,
+        roughness: 0.5,
+        transmission: 1,
         transparent: true,
         thickness: 1,
     });
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.set(0, 1.8, 0);
-    // textMesh.rotation.y = 5.5;  // Rotate the text slightly if needed
+    let textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-    scene.add(textMesh);
 
     const strokeGroup = new THREE.Group();
-    // strokeGroup.center();
+    strokeGroup.userData.update = (t) => {
+        strokeGroup.children.forEach((child) => {
+            child.userData.update?.(t);
+        });
+
+    }
     const lineMaterial = new LineMaterial({
-        color: 0xe0c2ff,
-        linewidth: 3
+        color: 0xd4a8ff,
+        linewidth: 3,
+        dashed: true,
+        gapSize: .1,
+        dashSize: 2,
+        dashOffset: 0.0,
     });
 
-    const shapes = font.generateShapes("Earth", 1);
-    const boundingBox = new THREE.Box3();
-    shapes.forEach((s) => {
-        let points = s.getPoints();
-        let points3d = [];
-        points.forEach((p) => {
-            points3d.push(p.x, p.y, 0);
-        });
-        
-        const lineGeo = new LineGeometry();
-        lineGeo.setPositions(points3d);
-        const strokeMesh = new Line2(lineGeo, lineMaterial);
-        strokeMesh.computeLineDistances();
-        strokeGroup.add(strokeMesh);
+    
+    const textGroup = new THREE.Group();
 
-        if (s.holes?.length > 0) {
-            s.holes.forEach((h) => {
-            let points = h.getPoints();
+    // Set initial position for the text group
+    textGroup.position.set(0, 0, 0);
+    
+    
+    function typeText(text, index = 0) {
+        if (index < text.length) {
+            currentText += text[index];
+            updateTextAndStroke(currentText);
+            setTimeout(() => typeText(text, index + 1), 100); // Typing speed
+        } else {
+            // After typing, start fading out the text
+            setTimeout(fadeOutText, 1500);  // Delay before fade starts
+        }
+    }
+    
+    function updateTextAndStroke(newText) {
+        // Update text geometry
+        // textGeometry.computeBoundingBox();
+        // textGeometry.center();
+        strokeGroup.clear(); // Clear old strokes
+        textGroup.clear(); // Clear old strokes
+        
+        textGeometry = new TextGeometry(newText, {
+            font: font,
+            size: 1,
+            depth: 0.1,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.08,
+            bevelSize: 0.01,
+            bevelOffset: 0,
+            bevelSegments: 5,
+        });
+        textGeometry.computeBoundingBox();
+        textGeometry.center();
+    
+
+        textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(0, 1.8, 0);
+        // textMesh.rotation.y = 5.5;  // Rotate the text slightly if needed
+    
+        // Update stroke geometry
+        const shapes = font.generateShapes(newText, 1);
+        shapes.forEach((s) => {
+            let points = s.getPoints();
             let points3d = [];
             points.forEach((p) => {
-            points3d.push(p.x, p.y, 0);
+                points3d.push(p.x, p.y, 0);
             });
+            
             const lineGeo = new LineGeometry();
             lineGeo.setPositions(points3d);
             const strokeMesh = new Line2(lineGeo, lineMaterial);
             strokeMesh.computeLineDistances();
+            strokeMesh.userData.update = (t) => {
+                lineMaterial.dashOffset = t * .1;
+            }
             strokeGroup.add(strokeMesh);
+            
+            if (s.holes?.length > 0) {
+                s.holes.forEach((h) => {
+                    let points = h.getPoints();
+                    let points3d = [];
+                    points.forEach((p) => {
+                        points3d.push(p.x, p.y, 0);
+                    });
+                    const lineGeo = new LineGeometry();
+                    lineGeo.setPositions(points3d);
+                    const strokeMesh = new Line2(lineGeo, lineMaterial);
+                    strokeMesh.computeLineDistances();
+                    strokeMesh.userData.update = (t) => {
+                        lineMaterial.dashOffset = t * .1;
+                    }
+                    strokeGroup.add(strokeMesh);
+                });
+            }
+        });
+        
+        // Center the stroke
+        const boundingBox = new THREE.Box3();
+        strokeGroup.children.forEach((child) => {
+            boundingBox.union(child.geometry.boundingBox);
+        });
+        const center = boundingBox.getCenter(new THREE.Vector3());
+        strokeGroup.children.forEach((child) => {
+            child.position.sub(center);
+        });
+        strokeGroup.position.set(0, 1.8, 0.15);
+        textGroup.add(textMesh);
+        textGroup.add(strokeGroup);
+        textGroup.rotation.y = - clock.getElapsedTime() * 0.1066666667;
+        scene.add(textGroup);
+    }
+    
+
+    function fadeOutText() {
+        isFadingOut = true;
+        gsap.to(textMesh.material, { 
+            opacity: 1, 
+            duration: 1,  // Fade-out duration
+            onComplete: () => {
+                currentIndex = (currentIndex + 1) % textList.length;  // Move to the next word
+                currentText = "";  // Reset current text
+                updateTextAndStroke(currentText);
+                textMesh.material.opacity = 1;  // Reset opacity for the next word
+                typeText(textList[currentIndex]);  // Start typing the next word
+            }
         });
     }
-        // Update bounding box
-        lineGeo.computeBoundingBox();
-        boundingBox.union(lineGeo.boundingBox);
-    });
 
-    const center = boundingBox.getCenter(new THREE.Vector3());
+    typeText(textList[currentIndex]);
 
-    // Translate all geometries within the group
-    strokeGroup.children.forEach((child) => {
-        child.position.sub(center);
-    });
-
-
-
-    // Translate the group to position its center at the origin (0, 0, 0)
-    // strokeGroup.position.sub( center );
-    strokeGroup.position.set(0, 1.8, 0.15);
-    // add 1.5 to the y axis (Aussuming it's 0,0,0)
-    // strokeGroup.position.set( 0, 1.5, 0 );
-    // strokeGroup.rotation.copy(textMesh.rotation);
-    console.log(strokeGroup.position);
-    
-    scene.add(strokeGroup);
-    
     const earth = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.ShaderMaterial({
@@ -235,7 +310,7 @@ async function init() {
             }
         }),
     );
-    
+
     const atmos = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.ShaderMaterial({
@@ -247,8 +322,8 @@ async function init() {
     );
 
     atmos.scale.set(1.2, 1.2, 1.2);
-    
-    
+
+
     const cloud = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.MeshStandardMaterial({
@@ -300,23 +375,18 @@ async function init() {
         .name("AMP Light Intensity");;
 
     const textFolder = gui.addFolder('3D Text');
-    
+
     textFolder.addColor({ color: lineMaterial.color.getHex() }, 'color')
-    .onChange((value) => lineMaterial.color.set(value))
-    .name('color');
+        .onChange((value) => lineMaterial.color.set(value))
+        .name('color');
     textFolder.addColor({ color: textMaterial.color.getHex() }, 'color')
         .onChange((value) => textMaterial.color.set(value))
         .name('color');
 
-    textFolder.add(textMesh.position, 'x', -5, 5).name('Text X');
-    textFolder.add(textMesh.position, 'y', -5, 5).name('Text Y');
-    textFolder.add(textMesh.position, 'z', -5, 5).name('Text Z');
-    textFolder.add(textMesh.rotation, 'y', 0, Math.PI * 2).name('Text Rotation Y');
-
-    textFolder.add(strokeGroup.position, 'x', -5, 5).name('Text X');
-    textFolder.add(strokeGroup.position, 'y', -5, 5).name('Text Y');
-    textFolder.add(strokeGroup.position, 'z', -5, 5).name('Text Z');
-    textFolder.add(strokeGroup.rotation, 'y', 0, Math.PI * 2).name('Text Rotation Y');
+    textFolder.add(textGroup.position, 'x', -5, 5).name('Text X');
+    textFolder.add(textGroup.position, 'y', -5, 5).name('Text Y');
+    textFolder.add(textGroup.position, 'z', -5, 5).name('Text Z');
+    textFolder.add(textGroup.rotation, 'y', 0, Math.PI * 2).name('Text Rotation Y');
 
     const sunFolder = gui.addFolder("Sun");
     sunFolder
@@ -391,12 +461,11 @@ async function init() {
     };
 
     gui.add({ fullscreen: toggleFullScreen }, "fullscreen").name("Toggle Fullscreen");
-    const clock = new THREE.Clock();
 
     const animate = () => {
         stats.begin();
         const elapsedTime = clock.getElapsedTime();
-        //   console.log("ELPPP", elapsedTime);
+        //   console.log("ELPPP", elapsedTime, deltaTime);
 
         const lightPositionView = new THREE.Vector3();
         lightPositionView.copy(pointLight.position).applyMatrix4(camera.matrixWorldInverse);
@@ -405,6 +474,10 @@ async function init() {
 
         earth.rotation.y = elapsedTime / 10;
         cloud.rotation.y = elapsedTime / 10;
+
+        // textGroup.rotation.y = - elapsedTime * 0.08;
+        strokeGroup.userData.update(elapsedTime * 4);
+
         controls.update();
         renderer.render(scene, camera);
         stats.end();
