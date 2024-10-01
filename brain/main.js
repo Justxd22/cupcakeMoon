@@ -27,7 +27,7 @@ function createGradientTexture() {
     const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
     // Updated color stops using Three.js ColorManagement
     const darkColor = new THREE.Color(0, 0, 10 / 255);
-    const lightColor = new THREE.Color(7 / 255, 7 / 255, 40 / 255);
+    const lightColor = new THREE.Color(7 / 255, 7 / 255, 70 / 255);
 
     darkColor.convertSRGBToLinear();
     lightColor.convertSRGBToLinear();
