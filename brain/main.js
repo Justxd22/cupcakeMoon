@@ -49,6 +49,7 @@ async function init() {
     const clock = new THREE.Clock();
     const textureLoader = new THREE.TextureLoader();
     const earthMap = "./res/earth_map.jpeg";
+    const moonMap = "./res/mooon_map.jpg";
     const cloudMap = "./res/cloud.png";
     const cloudTexture = textureLoader.load(cloudMap);
     cloudTexture.colorSpace = THREE.SRGBColorSpace;
@@ -311,6 +312,30 @@ async function init() {
         }),
     );
 
+    const moon = new THREE.Mesh(
+        new THREE.SphereGeometry(.25, 64,64),
+        new THREE.ShaderMaterial({
+            vertexShader: vertex,
+            fragmentShader: Frag,
+            uniforms: {
+                globeTexture: { value: textureLoader.load(moonMap) },
+                bumpMap: { value: textureLoader.load(moonMap) },
+                bumpScale: { value: 0.02 },
+                metalness: { value: 0.1 },
+                roughness: { value: 0.7 },
+                lightPosition: { value: new THREE.Vector3(-5, 2, 0) },
+                lightColor: { value: new THREE.Color(0xffffff) },
+                lightIntensity: { value: 1.5 },
+                viewPosition: { value: camera.position }
+            }
+        }),
+    );
+    moon.position.set(2,0,0);
+    let angle = 0;
+    const orbitRadius = 2; // Distance from the center point (origin)
+    const orbitSpeed = 0.01 ; // Speed of the orbit (adjust for faster or slower)
+
+
     const atmos = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.ShaderMaterial({
@@ -337,6 +362,7 @@ async function init() {
     cloud.scale.set(1.045, 1.045, 1.045);
 
     scene.add(earth);
+    scene.add(moon);
     scene.add(atmos);
     scene.add(cloud);
 
@@ -401,6 +427,15 @@ async function init() {
     sunFolder.add(pointLight.position, "x").min(-5).max(5).step(0.01).name("Sun X");
     sunFolder.add(pointLight.position, "y").min(-5).max(5).step(0.01).name("Sun Y");
     sunFolder.add(pointLight.position, "z").min(-5).max(5).step(0.01).name("Sun Z");
+    
+    
+    sunFolder.add(moon.position, "x").min(-5).max(5).step(0.01).name("Sun X");
+    sunFolder.add(moon.position, "y").min(-5).max(5).step(0.01).name("Sun Y");
+    sunFolder.add(moon.position, "z").min(-5).max(5).step(0.01).name("Sun Z");
+    sunFolder.add(moon.rotation, 'x', 0, Math.PI * 2).name('Text Rotation Y');
+    sunFolder.add(moon.rotation, 'y', 0, Math.PI * 2).name('Text Rotation Y');
+    sunFolder.add(moon.rotation, 'z', 0, Math.PI * 2).name('Text Rotation Y');
+
 
     const earthFolder = gui.addFolder("Earth");
     earthFolder
@@ -471,10 +506,14 @@ async function init() {
         lightPositionView.copy(pointLight.position).applyMatrix4(camera.matrixWorldInverse);
         // textMesh.lookAt(camera.position);
         earth.material.uniforms.lightPosition.value = lightPositionView;
+        moon.material.uniforms.lightPosition.value = lightPositionView;
 
         earth.rotation.y = elapsedTime / 10;
         cloud.rotation.y = elapsedTime / 10;
-
+        angle += orbitSpeed; // Increment the angle
+        moon.position.x = orbitRadius * Math.cos(angle); // Update x position
+        moon.position.z = orbitRadius * Math.sin(angle); // Update z position
+        moon.rotation.y += 0.01;
         // textGroup.rotation.y = - elapsedTime * 0.08;
         strokeGroup.userData.update(elapsedTime * 4);
 
