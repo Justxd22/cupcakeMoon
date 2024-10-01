@@ -3,8 +3,12 @@ import GUI from 'lil-gui';
 import Stats from 'stats.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare.js';
-
-
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { TTFLoader } from 'three/examples/jsm/loaders/TTFLoader.js';
+import { Font } from 'three/examples/jsm/loaders/FontLoader.js';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 
 async function loadShader(url) {
     const response = await fetch(url);
@@ -42,14 +46,21 @@ function createGradientTexture() {
 
 async function init() {
     const textureLoader = new THREE.TextureLoader();
-    const earthMap = "/res/earth_map.jpeg";
-    const cloudMap = "/res/cloud.png";
+    const earthMap = "./res/earth_map.jpeg";
+    const cloudMap = "./res/cloud.png";
     const cloudTexture = textureLoader.load(cloudMap);
     cloudTexture.colorSpace = THREE.SRGBColorSpace;
-    const atmosVertex = await loadShader('/res/shaders/atmosVertex.glsl');
-    const atmosFrag = await loadShader('/res/shaders/atmosFrag.glsl');
-    const Frag = await loadShader('/res/shaders/frag.glsl');
-    const vertex = await loadShader('/res/shaders/vertex.glsl');
+    const atmosVertex = await loadShader('./res/shaders/atmosVertex.glsl');
+    const atmosFrag = await loadShader('./res/shaders/atmosFrag.glsl');
+    const Frag = await loadShader('./res/shaders/frag.glsl');
+    const vertex = await loadShader('./res/shaders/vertex.glsl');
+
+    const ttfLoader = new TTFLoader();
+    const fontData = await new Promise((resolve) => {
+        ttfLoader.load('./res/fonts/Computerfont.ttf', resolve);
+    });
+    const font = new Font(fontData);
+
 
     const gui = new GUI();
     const stats = new Stats();
@@ -104,7 +115,7 @@ async function init() {
     pointLight.position.set(-5, 2, 0);
     scene.add(pointLight);
 
-    const lensFlaresImg = "/res/flare.png";
+    const lensFlaresImg = "./res/flare.png";
     const lensflareTexture = textureLoader.load(lensFlaresImg);
     const lensflareColor = new THREE.Color(0xffffff);
     const lensflare = new Lensflare();
@@ -118,6 +129,94 @@ async function init() {
     lensflare.addElement(lensflareElement);
     pointLight.add(lensflare);
 
+
+    const textGeometry = new TextGeometry('Earth', {
+        font: font,
+        size: 1,
+        depth: 0.1,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 0.08,
+        bevelSize: 0.01,
+        bevelOffset: 0,
+        bevelSegments: 5,
+    });
+    textGeometry.computeBoundingBox();
+    textGeometry.center();
+
+    const textMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x7accff,
+        roughness: 0.5, 
+        transmission:1,
+        transparent: true,
+        thickness: 1,
+    });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 1.8, 0);
+    // textMesh.rotation.y = 5.5;  // Rotate the text slightly if needed
+
+    scene.add(textMesh);
+
+    const strokeGroup = new THREE.Group();
+    // strokeGroup.center();
+    const lineMaterial = new LineMaterial({
+        color: 0xe0c2ff,
+        linewidth: 3
+    });
+
+    const shapes = font.generateShapes("Earth", 1);
+    const boundingBox = new THREE.Box3();
+    shapes.forEach((s) => {
+        let points = s.getPoints();
+        let points3d = [];
+        points.forEach((p) => {
+            points3d.push(p.x, p.y, 0);
+        });
+        
+        const lineGeo = new LineGeometry();
+        lineGeo.setPositions(points3d);
+        const strokeMesh = new Line2(lineGeo, lineMaterial);
+        strokeMesh.computeLineDistances();
+        strokeGroup.add(strokeMesh);
+
+        if (s.holes?.length > 0) {
+            s.holes.forEach((h) => {
+            let points = h.getPoints();
+            let points3d = [];
+            points.forEach((p) => {
+            points3d.push(p.x, p.y, 0);
+            });
+            const lineGeo = new LineGeometry();
+            lineGeo.setPositions(points3d);
+            const strokeMesh = new Line2(lineGeo, lineMaterial);
+            strokeMesh.computeLineDistances();
+            strokeGroup.add(strokeMesh);
+        });
+    }
+        // Update bounding box
+        lineGeo.computeBoundingBox();
+        boundingBox.union(lineGeo.boundingBox);
+    });
+
+    const center = boundingBox.getCenter(new THREE.Vector3());
+
+    // Translate all geometries within the group
+    strokeGroup.children.forEach((child) => {
+        child.position.sub(center);
+    });
+
+
+
+    // Translate the group to position its center at the origin (0, 0, 0)
+    // strokeGroup.position.sub( center );
+    strokeGroup.position.set(0, 1.8, 0.15);
+    // add 1.5 to the y axis (Aussuming it's 0,0,0)
+    // strokeGroup.position.set( 0, 1.5, 0 );
+    // strokeGroup.rotation.copy(textMesh.rotation);
+    console.log(strokeGroup.position);
+    
+    scene.add(strokeGroup);
+    
     const earth = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.ShaderMaterial({
@@ -136,8 +235,7 @@ async function init() {
             }
         }),
     );
-    scene.add(earth);
-
+    
     const atmos = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.ShaderMaterial({
@@ -149,9 +247,8 @@ async function init() {
     );
 
     atmos.scale.set(1.2, 1.2, 1.2);
-    scene.add(atmos);
-
-
+    
+    
     const cloud = new THREE.Mesh(
         new THREE.SphereGeometry(1, 64, 64),
         new THREE.MeshStandardMaterial({
@@ -163,6 +260,9 @@ async function init() {
         })
     );
     cloud.scale.set(1.045, 1.045, 1.045);
+
+    scene.add(earth);
+    scene.add(atmos);
     scene.add(cloud);
 
     const pointsCount = 1500;
@@ -184,7 +284,7 @@ async function init() {
             size: 0.015,
             sizeAttenuation: true,
             color: 0xffffff
-    });
+        });
 
     const points = new THREE.Points(pointsGeo, pointsMat);
     points.visible = true;
@@ -195,9 +295,28 @@ async function init() {
     gui.add(axis, "visible").name("Axis Helper");
     gui.add(controls, "autoRotate").name("Auto Rotate Scene");
     gui.add(ambientLight, "intensity").min(0)
-    .max(10) // Adjust this max value as needed
-    .step(0.1)
-    .name("AMP Light Intensity");;
+        .max(10) // Adjust this max value as needed
+        .step(0.1)
+        .name("AMP Light Intensity");;
+
+    const textFolder = gui.addFolder('3D Text');
+    
+    textFolder.addColor({ color: lineMaterial.color.getHex() }, 'color')
+    .onChange((value) => lineMaterial.color.set(value))
+    .name('color');
+    textFolder.addColor({ color: textMaterial.color.getHex() }, 'color')
+        .onChange((value) => textMaterial.color.set(value))
+        .name('color');
+
+    textFolder.add(textMesh.position, 'x', -5, 5).name('Text X');
+    textFolder.add(textMesh.position, 'y', -5, 5).name('Text Y');
+    textFolder.add(textMesh.position, 'z', -5, 5).name('Text Z');
+    textFolder.add(textMesh.rotation, 'y', 0, Math.PI * 2).name('Text Rotation Y');
+
+    textFolder.add(strokeGroup.position, 'x', -5, 5).name('Text X');
+    textFolder.add(strokeGroup.position, 'y', -5, 5).name('Text Y');
+    textFolder.add(strokeGroup.position, 'z', -5, 5).name('Text Z');
+    textFolder.add(strokeGroup.rotation, 'y', 0, Math.PI * 2).name('Text Rotation Y');
 
     const sunFolder = gui.addFolder("Sun");
     sunFolder
@@ -281,7 +400,7 @@ async function init() {
 
         const lightPositionView = new THREE.Vector3();
         lightPositionView.copy(pointLight.position).applyMatrix4(camera.matrixWorldInverse);
-
+        // textMesh.lookAt(camera.position);
         earth.material.uniforms.lightPosition.value = lightPositionView;
 
         earth.rotation.y = elapsedTime / 10;
