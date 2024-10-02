@@ -391,7 +391,7 @@ async function init() {
     points.visible = true;
     scene.add(points);
 
-    gui.hide();
+    gui.close();
     gui.add(gridHelper, "visible").name("Grid Helper");
     gui.add(points, "visible").name("Points shi");
     gui.add(axis, "visible").name("Axis Helper");
