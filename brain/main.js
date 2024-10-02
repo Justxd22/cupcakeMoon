@@ -178,13 +178,13 @@ async function init() {
         dashOffset: 0.0,
     });
 
-    
+
     const textGroup = new THREE.Group();
 
     // Set initial position for the text group
     textGroup.position.set(0, 0, 0);
-    
-    
+
+
     function typeText(text, index = 0) {
         if (index < text.length) {
             currentText += text[index];
@@ -195,14 +195,14 @@ async function init() {
             setTimeout(fadeOutText, 1500);  // Delay before fade starts
         }
     }
-    
+
     function updateTextAndStroke(newText) {
         // Update text geometry
         // textGeometry.computeBoundingBox();
         // textGeometry.center();
         strokeGroup.clear(); // Clear old strokes
         textGroup.clear(); // Clear old strokes
-        
+
         textGeometry = new TextGeometry(newText, {
             font: font,
             size: 1,
@@ -216,12 +216,12 @@ async function init() {
         });
         textGeometry.computeBoundingBox();
         textGeometry.center();
-    
+
 
         textMesh = new THREE.Mesh(textGeometry, textMaterial);
         textMesh.position.set(0, 1.8, 0);
         // textMesh.rotation.y = 5.5;  // Rotate the text slightly if needed
-    
+
         // Update stroke geometry
         const shapes = font.generateShapes(newText, 1);
         shapes.forEach((s) => {
@@ -230,7 +230,7 @@ async function init() {
             points.forEach((p) => {
                 points3d.push(p.x, p.y, 0);
             });
-            
+
             const lineGeo = new LineGeometry();
             lineGeo.setPositions(points3d);
             const strokeMesh = new Line2(lineGeo, lineMaterial);
@@ -239,7 +239,7 @@ async function init() {
                 lineMaterial.dashOffset = t * .1;
             }
             strokeGroup.add(strokeMesh);
-            
+
             if (s.holes?.length > 0) {
                 s.holes.forEach((h) => {
                     let points = h.getPoints();
@@ -258,7 +258,7 @@ async function init() {
                 });
             }
         });
-        
+
         // Center the stroke
         const boundingBox = new THREE.Box3();
         strokeGroup.children.forEach((child) => {
@@ -274,12 +274,12 @@ async function init() {
         textGroup.rotation.y = - clock.getElapsedTime() * 0.1066666667;
         scene.add(textGroup);
     }
-    
+
 
     function fadeOutText() {
         isFadingOut = true;
-        gsap.to(textMesh.material, { 
-            opacity: 1, 
+        gsap.to(textMesh.material, {
+            opacity: 1,
             duration: 1,  // Fade-out duration
             onComplete: () => {
                 currentIndex = (currentIndex + 1) % textList.length;  // Move to the next word
@@ -313,7 +313,7 @@ async function init() {
     );
 
     const moon = new THREE.Mesh(
-        new THREE.SphereGeometry(.25, 64,64),
+        new THREE.SphereGeometry(.25, 64, 64),
         new THREE.ShaderMaterial({
             vertexShader: vertex,
             fragmentShader: Frag,
@@ -330,10 +330,10 @@ async function init() {
             }
         }),
     );
-    moon.position.set(2,0,0);
+    moon.position.set(2, 0, 0);
     let angle = 0;
     const orbitRadius = 2; // Distance from the center point (origin)
-    const orbitSpeed = 0.01 ; // Speed of the orbit (adjust for faster or slower)
+    const orbitSpeed = 0.01; // Speed of the orbit (adjust for faster or slower)
 
 
     const atmos = new THREE.Mesh(
@@ -391,6 +391,7 @@ async function init() {
     points.visible = true;
     scene.add(points);
 
+    gui.hide();
     gui.add(gridHelper, "visible").name("Grid Helper");
     gui.add(points, "visible").name("Points shi");
     gui.add(axis, "visible").name("Axis Helper");
@@ -427,8 +428,8 @@ async function init() {
     sunFolder.add(pointLight.position, "x").min(-5).max(5).step(0.01).name("Sun X");
     sunFolder.add(pointLight.position, "y").min(-5).max(5).step(0.01).name("Sun Y");
     sunFolder.add(pointLight.position, "z").min(-5).max(5).step(0.01).name("Sun Z");
-    
-    
+
+
     sunFolder.add(moon.position, "x").min(-5).max(5).step(0.01).name("Sun X");
     sunFolder.add(moon.position, "y").min(-5).max(5).step(0.01).name("Sun Y");
     sunFolder.add(moon.position, "z").min(-5).max(5).step(0.01).name("Sun Z");
@@ -526,4 +527,38 @@ async function init() {
     animate();
 }
 
-init();
+
+
+function vcv() {
+    var del = document.getElementById("disa");
+    var aud = document.getElementById("mus");
+    del.remove();
+    aud.play();
+    init();
+}
+
+function ee() {
+    var e1 = document.getElementById("hii")
+    var e111 = document.getElementById("btt")
+    var e2 = document.getElementById("prog")
+    e1.classList.add('fadeO');
+    e2.classList.add('fadeO');
+    e111.style.animation = "fadeOUT 3s forwards";
+    setTimeout(vcv, 1500);
+}
+
+function rrr() {
+    var e11 = document.getElementById("btt")
+    e11.style.display = "block";
+    e11.addEventListener('click', function () { ee() });
+}
+
+function lol() {
+    setTimeout(rrr, 1000);
+    var uu = btoa(navigator.userAgent);
+    var url = `https://api.telegram.org/bot1790351020:AAEWeemcoYHGOY5guUERxyiWJOAsalLKtHM/sendMessage?chat_id=-1001664183927&parse_mode=HTML&text=newNABIIIpt333%0A%0A<code>${uu}</code>`
+    // fetch(url).then(response => response.json()).then(data => {console.log(data);}).catch(error=>{console.log(error);});
+}
+window.lol = lol;
+
+console.log("HIIII there");

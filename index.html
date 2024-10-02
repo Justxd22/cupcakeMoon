@@ -1,34 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cosmic World</title>
   <style>
-    body { margin: 0; }
-    canvas { display: block; }
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    @font-face {
+      font-family: 'computer';
+      font-style: normal;
+      font-weight: 300;
+      font-stretch: normal;
+      src: url('./res/fonts/Computerfont.ttf') format('truetype');
+    }
   </style>
-      <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
-                "lil-gui": "https://cdn.skypack.dev/lil-gui",
-                "stats.js": "https://cdn.skypack.dev/stats.js",
-                "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.169.0/examples/jsm/controls/OrbitControls.js",
-                "three/examples/jsm/objects/Lensflare.js": "https://unpkg.com/three@0.169.0/examples/jsm/objects/Lensflare.js",
-                "three/examples/jsm/geometries/TextGeometry.js": "https://unpkg.com/three@0.169.0/examples/jsm/geometries/TextGeometry.js",
-                "three/examples/jsm/loaders/FontLoader.js": "https://unpkg.com/three@0.169.0/examples/jsm/loaders/FontLoader.js",
-                "three/examples/jsm/loaders/TTFLoader.js": "https://unpkg.com/three@0.169.0/examples/jsm/loaders/TTFLoader.js",
-                "three/examples/jsm/lines/Line2.js": "https://unpkg.com/three@0.169.0/examples/jsm/lines/Line2.js",
-                "three/examples/jsm/lines/LineMaterial.js": "https://unpkg.com/three@0.169.0/examples/jsm/lines/LineMaterial.js",
-                "three/examples/jsm/lines/LineGeometry.js": "https://unpkg.com/three@0.169.0/examples/jsm/lines/LineGeometry.js",
-                "gsap": "https://cdn.skypack.dev/gsap"
-              }
-        }
+  <script type="importmap">
+    {
+      "imports": {
+          "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+          "lil-gui": "https://cdn.skypack.dev/lil-gui",
+          "stats.js": "https://cdn.skypack.dev/stats.js",
+          "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.169.0/examples/jsm/controls/OrbitControls.js",
+          "three/examples/jsm/objects/Lensflare.js": "https://unpkg.com/three@0.169.0/examples/jsm/objects/Lensflare.js",
+          "three/examples/jsm/geometries/TextGeometry.js": "https://unpkg.com/three@0.169.0/examples/jsm/geometries/TextGeometry.js",
+          "three/examples/jsm/loaders/FontLoader.js": "https://unpkg.com/three@0.169.0/examples/jsm/loaders/FontLoader.js",
+          "three/examples/jsm/loaders/TTFLoader.js": "https://unpkg.com/three@0.169.0/examples/jsm/loaders/TTFLoader.js",
+          "three/examples/jsm/lines/Line2.js": "https://unpkg.com/three@0.169.0/examples/jsm/lines/Line2.js",
+          "three/examples/jsm/lines/LineMaterial.js": "https://unpkg.com/three@0.169.0/examples/jsm/lines/LineMaterial.js",
+          "three/examples/jsm/lines/LineGeometry.js": "https://unpkg.com/three@0.169.0/examples/jsm/lines/LineGeometry.js",
+          "gsap": "https://cdn.skypack.dev/gsap"
+      }
+    }
   </script>
-</head>
-<body>
   <script type="module" src="./brain/main.js"></script>
-  
+  <link href="./styles/kitty.css" rel="stylesheet">
+
+</head>
+
+<body onload="lol();">
+  <audio id="mus" loop>
+    <source src="./res/music/Dark-Times.mp3">
+    </source>
+  </audio>
+  <div id="disa">
+  <div id="hii" class="hiiys">Spacinnnn...</div>
+  <div id="prog" class="progress">
+    <div class="progress-value"></div>
+  </div>
+  <button id="btt" class="bttn" style="display: none;">Contine</button>
+  </div>
+
 </body>
+
 </html>
