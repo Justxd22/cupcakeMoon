@@ -133,7 +133,7 @@ async function init() {
     pointLight.add(lensflare);
 
 
-    const textList = ["Hey", "Cosmic", "Star", "Pretttty"];
+    const textList = ["Hey", "Cosmic", "Stars", "C-137"];
     let currentIndex = 0;
     let currentText = "";
     let isFadingOut = false;
